@@ -314,8 +314,29 @@ function checkout(){
     items: cart.map(i=>({id:i.id, size:i.size})),
     text: "🧾 Новый заказ:\n" + lines.join("\n") + `\n\nИтого: ${rub(total)}`
   };
-  if(tg){ tg.sendData(JSON.stringify(order)); }
-  else { alert("Демо-режим (вне Telegram):\n\n" + order.text); }
+
+  // --- ДИАГНОСТИКА: показываем, что происходит при отправке ---
+  let diag = "";
+  if(!tg){ diag = "tg НЕ найден (открыто вне Telegram)"; }
+  else if(typeof tg.sendData !== "function"){ diag = "sendData недоступен"; }
+  else {
+    const src = tg.initDataUnsafe || {};
+    diag = "tg есть. sendData есть.\n"
+         + "initData пустой? " + (tg.initData ? "нет" : "ДА (это проблема)") + "\n"
+         + "Способ запуска ок для sendData, если initData не пустой.";
+  }
+  try {
+    if(tg && tg.showPopup){
+      tg.showPopup({title:"Проверка", message:diag, buttons:[{type:"ok"}]});
+    } else {
+      alert(diag);
+    }
+  } catch(e){ alert("Ошибка показа: " + e.message + "\n" + diag); }
+  // --- конец диагностики ---
+
+  if(tg && typeof tg.sendData === "function"){
+    tg.sendData(JSON.stringify(order));
+  }
 }
 
 renderFilters();

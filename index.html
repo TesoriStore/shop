@@ -304,38 +304,29 @@ function openCart(){
 function closeCart(){ $("cartSheet").classList.remove("open"); }
 function removeItem(key){ cart = cart.filter(i=>i.key!==key); updateCartCount(); openCart(); }
 
+// Имя бота без @ — ОБЯЗАТЕЛЬНО укажи своего (например FinderstoneBot)
+const BOT_USERNAME = "FinderstoneBot";
+
 function checkout(){
-  const lines = cart.map(i=>{
-    const p = PRODUCTS.find(x=>x.id===i.id);
-    return `• ${p.brand} ${p.name} — размер ${i.size} — ${rub(p.price)}`;
-  });
-  const total = cart.reduce((s,i)=>s+PRODUCTS.find(x=>x.id===i.id).price,0);
-  const order = {
-    items: cart.map(i=>({id:i.id, size:i.size})),
-    text: "🧾 Новый заказ:\n" + lines.join("\n") + `\n\nИтого: ${rub(total)}`
-  };
+  if(cart.length===0) return;
 
-  // --- ДИАГНОСТИКА: показываем, что происходит при отправке ---
-  let diag = "";
-  if(!tg){ diag = "tg НЕ найден (открыто вне Telegram)"; }
-  else if(typeof tg.sendData !== "function"){ diag = "sendData недоступен"; }
-  else {
-    const src = tg.initDataUnsafe || {};
-    diag = "tg есть. sendData есть.\n"
-         + "initData пустой? " + (tg.initData ? "нет" : "ДА (это проблема)") + "\n"
-         + "Способ запуска ок для sendData, если initData не пустой.";
-  }
-  try {
-    if(tg && tg.showPopup){
-      tg.showPopup({title:"Проверка", message:diag, buttons:[{type:"ok"}]});
-    } else {
-      alert(diag);
-    }
-  } catch(e){ alert("Ошибка показа: " + e.message + "\n" + diag); }
-  // --- конец диагностики ---
+  // Кодируем заказ в компактную строку: id-размер через точку с запятой.
+  // Пример: "1-M;3-L" — товар 1 размер M, товар 3 размер L.
+  const code = cart.map(i => `${i.id}-${i.size}`).join(";");
 
-  if(tg && typeof tg.sendData === "function"){
-    tg.sendData(JSON.stringify(order));
+  // Telegram umеет открыть чат с ботом и подставить текст после /start
+  // через параметр startapp/start. Мы передаём код заказа боту.
+  const payload = "order_" + btoa(unescape(encodeURIComponent(code)))
+                    .replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
+
+  const link = `https://t.me/${BOT_USERNAME}?start=${payload}`;
+
+  if(tg && typeof tg.openTelegramLink === "function"){
+    tg.openTelegramLink(link);   // откроет чат с ботом внутри Telegram
+    if(tg.close) setTimeout(()=>tg.close(), 300);
+  } else {
+    // вне Telegram (в браузере) — просто открываем ссылку
+    window.open(link, "_blank");
   }
 }
 
